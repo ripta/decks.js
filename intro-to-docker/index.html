@@ -29,54 +29,95 @@
   <!-- Required Modernizr file -->
   <script src="/modernizr.custom.js"></script>
 </head>
+
 <body>
   <div class="deck-container">
 
     <!-- Begin slides. Just make elements with a class of slide. -->
 
-    <section class="slide" id="intro-to-docker">
-      <h1>Intro to Docker</h1>
+    <section class="slide" id="title-slide">
+      <h1>
+        Intro to Docker
+        <br><small><em>Ripta Pasay</em></small>
+      </h1>
     </section>
 
+    <section class="slide" id="traditional-vm">
+      <h2>Traditional Virtual Machines</h2>
+      <figure>
+        <img src="./what-is-vm-diagram.png">
+        <figcaption>From: https://www.docker.com/whatisdocker</figcaption>
+      </figure>
+    </section>
+<!-- 
     <section class="slide" id="what-is-docker">
       <h2>What is Docker?</h2>
+      <ul>
+        <li>An open source container virtualization platform</li>
+      </ul>
+    </section>
+ -->
+    <section class="slide" id="docker-virtualization">
+      <h2>What does Docker provide?</h2>
       <ol>
         <li>
           <h3>Lightweight virtualization</h3>
           <ul>
-            <li>Many containers run on the same logical machine</li>
-            <li></li>
+            <li>
+              Many containers on one control host
+              <figure>
+                <img src="./what-is-container-diagram.png">
+                <figcaption>From: https://www.docker.com/whatisdocker</figcaption>
+              </figure>
+            </li>
+            <li>Shared kernel, isolated userspace</li>
+            <li>Immediate start (COW via AUFS)</li>
           </ul>
         </li>
-        <li>Abstraction layer</li>
-        <li>Automation</li>
       </ol>
     </section>
 
-    <section class="slide" id="how-to-overview">
-      <h2>How to Make a Deck</h2>
-      <ol>
+    <section class="slide" id="docker-abstraction">
+      <h2>What does Docker provide?</h2>
+      <ol start="2">
         <li>
-          <h3>Write Slides</h3>
-          <p>Slide content is simple&nbsp;HTML.</p>
-        </li>
-        <li>
-          <h3>Choose Themes</h3>
-          <p>One for slide styles and one for deck&nbsp;transitions.</p>
-        </li>
-        <li>
-          <h3>Include Extensions</h3>
-          <p>Add extra functionality to your deck, or leave it stripped&nbsp;down.</p>
+          <h3>Abstraction layer</h3>
+          <ul>
+            <li>Predefined, self-contained architecture</li>
+            <li>Freedom of runtime environment<sup>†</sup></li>
+            <li>
+              Matrix from hell:
+              <figure>
+                <img src="./the-matrix-from-hell.png">
+                <figcaption>From: http://pointful.github.io/docker-intro/#/3</figcaption>
+              </figure>
+            </li>
+          </ul>
         </li>
       </ol>
+
+      <footer>
+        <small>
+          <sup>†</sup> generally {x86, x64}, Linux 3.2+
+        </small>
+      </footer>
     </section>
 
-    <section class="slide">
-      <h1>Content</h1>
-    </section>
-
-    <section class="slide">
-      <h1>Here</h1>
+    <section class="slide" id="docker-automation">
+      <h2>What does Docker provide?</h2>
+      <ol start="3">
+        <li>
+          <h3>Automation</h3>
+          <ul>
+            <li>
+              Client-server architecture
+              <img src="./docker-architecture.png" alt="Docker Architecture">
+            </li>
+            <li>Client library in multiple langauges</li>
+            <li>HTTP-based Restful-like API</li>
+          </ul>
+        </li>
+      </ol>
     </section>
 
     <!-- End slides. -->
