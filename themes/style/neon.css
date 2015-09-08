@@ -29,6 +29,11 @@ blockquote:before, blockquote:after, q:before, q:after {
   content: none;
 }
 
+figcaption {
+  font-size: 80%;
+  text-align: center;
+}
+
 ins {
   background-color: #ff9;
   color: #000;
@@ -100,7 +105,7 @@ nav ul, nav li {
 }
 
 small {
-  font-size: 85%;
+  font-size: 75%;
 }
 
 strong, th {
