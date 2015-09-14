@@ -306,6 +306,81 @@ Stopping a container (`docker stop 032b0875083e`) sends a SIGTERM, while (`docke
 
 ### Sample Application
 
+```
+$ cd ~/Projects/dockerfell/nginx-static-test
+$ docker build -t ripta/nginx-static-test:1.0 .
+Sending build context to Docker daemon 224.3 kB
+Sending build context to Docker daemon
+Step 0 : FROM alpine:3.2
+ ---> 31f630c65071
+Step 1 : MAINTAINER Ripta Pasay <ripta+docker@pasay.name>
+ ---> Running in 4d28a4beff1f
+ ---> 17b2ddda00c7
+Removing intermediate container 4d28a4beff1f
+Step 2 : ENV META_IMAGE_VERSION 1.0
+ ---> Running in 10322b11c0a6
+ ---> bc6ca695a5c7
+Removing intermediate container 10322b11c0a6
+Step 3 : RUN apk update
+ ---> Running in eea0d955c8f2
+fetch http://dl-4.alpinelinux.org/alpine/v3.2/main/x86_64/APKINDEX.tar.gz
+v3.2.3-35-g583a384 [http://dl-4.alpinelinux.org/alpine/v3.2/main]
+OK: 5295 distinct packages available
+ ---> 517497e53894
+Removing intermediate container eea0d955c8f2
+Step 4 : RUN apk add nginx
+ ---> Running in 1ed0c47d698a
+(1/2) Installing pcre (8.37-r1)
+(2/2) Installing nginx (1.8.0-r1)
+Executing nginx-1.8.0-r1.pre-install
+Executing busybox-1.23.2-r0.trigger
+OK: 7 MiB in 17 packages
+ ---> 10c88301b95d
+Removing intermediate container 1ed0c47d698a
+Step 5 : COPY . /usr/share/nginx/html/
+ ---> 1bb05fedcd31
+Removing intermediate container 01c1298bb966
+Step 6 : RUN echo "Generated at $(date)" > /usr/share/nginx/html/VERSION
+ ---> Running in 88287bcff994
+ ---> 606891c0f07a
+Removing intermediate container 88287bcff994
+Step 7 : EXPOSE 80
+ ---> Running in 64f4670e03c4
+ ---> e1df01d77395
+Removing intermediate container 64f4670e03c4
+Successfully built e1df01d77395
+```
 
+Try running nginx:
 
+```
+$ docker run -d -p 80 ripta/nginx-static-test:1.0 nginx
+$ docker ps
+```
 
+Something is wrong, because the container isn't executing. `docker ps -n 1` will show that the container exited. What went wrong?
+
+```
+$ docker run -i -t ripta/nginx-static-test:1.0 /bin/sh
+/ # nginx
+/ #
+```
+
+Looks like nginx got backgrounded. Uh-oh. More importantly, if you're familiar with how processes are daemonized, you'll know that applications will frequently [fork or double-fork](http://stackoverflow.com/a/16317668), with the intention that the child process is orphaned, then adopted by the init process.
+
+If you recall, the process we start is actually the init process. When it exits, the container exits.
+
+So, you'll note that nothing has been started, because nginx is automatically backgrounded. If you refer to the nginx docs, you'll note the `-g` flag:
+
+```
+$ docker run -d -p 80 ripta/nginx-static-test:1.0 nginx -g 'daemon off;'
+$ docker ps
+```
+
+You'll see docker's host port in the output of `docker ps` above. So how do we query it?
+
+```
+$ docker-machine ip intro
+$ curl -i http://172.16.241.128:32773/
+$ curl -i http://172.16.241.128:32773/VERSION
+```
