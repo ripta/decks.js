@@ -1,12 +1,30 @@
-### Introduction
+# Introduction to Docker
 
-I'll spend about fifteen minutes to cover the basics, and then jump into show-and-tell.
+This document is meant to be a quick introduction to docker, and will cover the basic architecture, challenges, managing containers and images, and through to building and running a static website on docker.
 
-If you'd like to follow, you'll need access to a docker host. If you don't have anything setup, expect to download about 200 MB of data.
+[TOC]
 
-### Installation
+## Slides
 
-On OS X, you'll need a hypervisor. If you don't have one already—i.e., VirtualBox, VMWare Fusion, or Parallels Desktop—the easiest way to go is by using Homebrew.
+This document only contains the show-and-tell portion. Architectural overview slides can be found [here](https://github.com/ripta/decks.js/blob/master/intro-to-docker/index.html).
+
+If you'd like to follow, you'll need access to a docker host.
+
+## Installation
+
+If you don't have anything setup on your OS X machine, expect to download about 200 MB of data, though the exact amount depends on what prerequisites you already have on your machine.
+
+**I highly recommend the CLI way.**
+
+Doing so requires more time to get up to speed and deals with lower level commands. While there's more to learn, I think it's more useful in the long run to know the concepts behind new technology, how to operate it, and how to fix things should they break.
+
+The GUI way is easily, but abstracts away most concepts. If things go haywire—especially considering that docker isn't the simplest of technologies and that the GUI isn't mature (yet), they *will* go haywire—you're better off learning from the ground up.
+
+### The CLI Way (Recommended)
+
+On OS X, you'll need a hypervisor, e.g., VirtualBox, VMWare Fusion, or Parallels Desktop. If you don't have one already the easiest way to go is by using Homebrew.
+
+This portion assumes you already have Homebrew installed and running.
 
 Install the `caskroom` extension to homebrew if you haven't already, which will allow you to install Application binaries from the command line:
 
@@ -15,7 +33,7 @@ $ brew update
 $ brew install caskroom/cask/brew-cask
 ```
 
-Install one of VirtualBox (recommended by *Docker, Inc*), VMWare Fusion (Ripta's preference), or Parallels Desktop:
+Install one of VirtualBox (free and recommended by *Docker, Inc*), VMWare Fusion (not-free, but Ripta's preference), or Parallels Desktop:
 
 ```
 $ brew cask install virtualbox
@@ -29,13 +47,21 @@ Get the `docker` client, `docker-machine`, and `docker-compose`:
 $ brew install docker docker-machine docker-compose
 ```
 
-We won't be using `docker-compose` today, but it can be used to define and run multiple containers in one.
+We won't be using `docker-compose` today, but it can be used to define and run multiple containers as one unit.
 
-### Create New Machine
+### The Easy, GUI Way
 
-It doesn't **yet** matter your location, but I'm issuing these commands under a project directory.
+In August 2015, Docker, Inc. announced the release of [Docker Toolbox](https://www.docker.com/toolbox), which provides a one-click install for the docker client, docker machine, docker compose, a hypervisor, and a front-end GUI.
 
-I'm going to first create a new docker host running on VMWare. I'll name it `intro`, but you can choose any name you'd like; a name that resembles a hostname would be a good candidate:
+I won't be covering the GUI way.
+
+## Create New Machine
+
+Now that you have a hypervisor and the docker command line tools installed, we can start our first docker host.
+
+It doesn't matter (at least not at this point) the directory from which you issue these commands.
+
+I'm going to first create a new docker host running on VMWare. I'll name it `intro`, but you can choose any name you'd like; a name that resembles a hostname would be a good candidate, because it will actually be used as the hostname of the docker host:
 
 ```
 $ docker-machine create -d vmwarefusion intro
@@ -49,12 +75,12 @@ To see how to connect Docker to this machine, run: docker-machine env intro
 If you're running on a different hypervisor, you'll need to lookup the driver name under the `--driver` option in the output of:
 
 ```
-$ docker-machine create -h | grep -- --driver
+$ docker-machine create -h
 ```
 
-It should take a minute to boot up your new docker host; longer if `docker-machine` needs to download the images.
+It should take a minute to boot up your new docker host; longer if `docker-machine` needs to download the images, which it will do automatically.
 
-You'll now have a set of environment variables needed to access the new docker host:
+Once your docker host is running, you'll now have a set of environment variables needed to access the new docker host:
 
 ```
 $ docker-machine env intro
@@ -64,13 +90,15 @@ export DOCKER_CERT_PATH="/Users/rpasay/.docker/machine/machines/intro"
 export DOCKER_MACHINE_NAME="intro"
 ```
 
-Evaluating the output of the above command will set your terminal up, after which you should be able to issue any docker command:
+Evaluating the output of the above command will set your terminal up:
 
 ```
 $ eval `docker-machine env intro`
 ```
 
-As with git-like CLI, `docker help` should get you started. A useful command is `docker info`, which provides information about the host:
+After setting up the environment variables, your `docker` client will now have access to your docker host (and docker instance running on said host).
+
+As with all git-like CLI, `docker help` should get you started. A useful command is `docker info`, which provides information about the host:
 
 ```
 $ docker info
@@ -104,11 +132,11 @@ Labels:
 Of note in the output are:
 
 * number of containers, which are separate "things" running;
-* number of images, which are snapshots stored on disk;
-* storage driver, which determine how images are stored on disk, usually **aufs** (advanced multilayered unification filesystem); and
-* the kernel version.
+* number of images, which are snapshots of things that *could* be running, stored on disk;
+* storage driver, which determine *how* images are stored on disk, usually **aufs** (advanced multilayered unification filesystem); and
+* the kernel version running on the docker host.
 
-The version of docker client and server can be retrieved using:
+The version of docker client (running on your local machine) and server (running on the docker host) can be retrieved using:
 
 ```
 $ docker version
@@ -117,6 +145,7 @@ Client API version: 1.19
 Go version (client): go1.4.2
 Git commit (client): 0baf609
 OS/Arch (client): darwin/amd64
+
 Server version: 1.8.1
 Server API version: 1.20
 Go version (server): go1.4.2
@@ -124,11 +153,11 @@ Git commit (server): d12ea79
 OS/Arch (server): linux/amd64
 ```
 
-Obviously, my client version is a little outdated. Not a problem in this case.
+Obviously, my client version is a little outdated. Not a problem in this case, but if you can, I'd recommend running the same version.
 
-**One side note:** You'll probably never need to do so—and in fact, doing this could mess up your setup if you don't know what you're doing—however, you can access the docker host itself using `docker-machine ssh intro`. Of note is the amount of space available to your AUFS mount, which is used for images. There are options under `docker-machine create` to expand this size if you're building a lot of images.
+**Aside:** You'll probably never need to do so—and in fact, doing this could mess up your setup if you don't know what you're doing—however, you can access the docker host itself using `docker-machine ssh intro`. When inside the docker host, the amount of space available to your AUFS mount, which is used for images is useful to know. There are options under `docker-machine create` to expand this size if you're building a lot of images.
 
-### Finding Images
+## Finding Images
 
 Official images maintained by Docker, Inc are available under the `library` username:
 
@@ -140,7 +169,9 @@ Alternatively, open [https://hub.docker.com/r/library/](https://hub.docker.com/r
 
 While it may be a matter of preference on which image to use as a base, I prefer smaller, slimmer base images: you can fit more per host and it's more portable. I've found Alpine Linux to be a good balance between size and feature.
 
-Let's use that for now:
+One reason for a larger image is if it contains management tools. It's up for debate, but some folks have advocated for treating images as full OSes, each with potentially its own ssh daemon, for instance.
+
+Let's use the smaller `alpine` image for now:
 
 ```
 $ docker pull -a alpine
@@ -158,14 +189,13 @@ Multiple tags can point to the same image ID, e.g., 3.2 and latest above.
 
 ### Running Container
 
-Running alpine v3.2:
+Running a container with alpine v3.2:
 
 ```
 $ docker run -i -t alpine:3.2 /bin/sh
-/ # 
 ```
 
-where `-i` keeps STDIN open even when we're not attached to the container, and `-t` allocates a pseudo TTY.
+where `-i` keeps STDIN open even when we're not attached to the container, `-t` allocates a pseudo TTY, and `/bin/sh` being the init process to run inside the container.
 
 Inside shell, the hostname of the container corresponds to the container ID:
 
@@ -174,7 +204,7 @@ Inside shell, the hostname of the container corresponds to the container ID:
 3747ada8f970
 ```
 
-There aren't many processes running. In fact, `/bin/sh` is the init process (PID 1):
+There aren't many processes running. In fact, `/bin/sh`, init process (PID 1), is the only thing normally running:
 
 ```
 / # ps -ef
@@ -183,7 +213,7 @@ PID   USER     TIME   COMMAND
    11 root       0:00 ps -ef
 ```
 
-This is important to note, because:
+This is important to note, because just like a full-blown OS:
 
 1. when the init process exits, the container stops;
 2. the init process should be prepared to own any orphaned processes; and
@@ -203,6 +233,7 @@ tmpfs                   498.1M         0    498.1M   0% /sys/fs/cgroup
 /dev/sda1                18.2G      1.6G     15.6G   9% /etc/hosts
 tmpfs                   498.1M         0    498.1M   0% /proc/kcore
 tmpfs                   498.1M         0    498.1M   0% /proc/timer_stats
+
 / # free -m
              total         used         free       shared      buffers
 Mem:           996          379          617          112           13
@@ -210,7 +241,9 @@ Mem:           996          379          617          112           13
 Swap:         1108            0         1108
 ```
 
-View routing information:
+Because we have not restricted resources on the container, it has access to all the host's resources.
+
+You can also view routing information:
 
 ```
 / # ip a
@@ -228,11 +261,53 @@ View routing information:
        valid_lft forever preferred_lft forever
 ```
 
-Alpine Linux comes with a lightweight package manager: apk.
+Try making a curl request to `ifconfig.co`, which returns your public IP address:
 
-### Listing Containers
+```
+/ # curl ifconfig.co
+/bin/sh: curl: not found
+```
 
-`docker ps` lists all running containers. When I exit the running container, it can still be queried with `-a`:
+Thankfully, Alpine Linux comes with a lightweight package manager: apk.
+
+```
+/ # apk update
+/ # apk add curl
+```
+
+After much output, you'll hopefully have `curl` available to you.
+
+```
+/ # curl ifconfig.co
+12.174.123.130
+```
+
+Awesome. Let's exit the container (`exit` works, as does `C-D`). 
+
+Let's start a new container using the same image:
+
+```
+$ docker run -i -t alpine:3.2 /bin/sh
+/ # curl ifconfig.co
+/bin/sh: curl: not found
+```
+
+Note, however, that curl is no longer available to us. It's important to note that when a container is run from an image:
+
+1. Changes inside the container is invisible to any other container running the same image.
+2. Changes to the image is not automatically kept.
+
+**Observations:**
+
+1. Once created, images are read-only. When a container is started using an image, a writable file system is created on top of the read-only image (thus, references to filesystem layers when doing a `docker pull` and the use of AUFS as a backing store to docker).
+2. A command, `docker commit`, exists to create a new image based on changes introduced by a container. See its help page for information.
+
+
+## Listing Containers
+
+If you issued `docker ps` while a container is running, you'll see an entry for every running container in its output. However, `docker ps` only lists running containers.
+
+When I exit the running container, it can still be queried with `-a`:
 
 ```
 $ docker ps -a
@@ -240,9 +315,11 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 3747ada8f970        alpine:3.2          "/bin/sh"           23 minutes ago      Exited (1) About a minute ago                       sick_einstein
 ```
 
-Image and container IDs go hand-in-hand, but are different. Both are 128-bit (32-character) identifier.
+Image and container IDs go hand-in-hand and are both 64-character identifiers, but refer to different objects.
 
-### Restarting Containers
+## Restarting Containers
+
+You can restart a stopped container, after which it will show as running again:
 
 ```
 $ docker restart 3747ada8f970
@@ -251,10 +328,20 @@ $ docker restart 3747ada8f970
 $ docker ps
 CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
 3747ada8f970        alpine:3.2          "/bin/sh"           34 minutes ago      Up 2 seconds                            sick_einstein
+```
 
+However, it runs the container in detached mode, meaning that no TTY is allocated against it. You could manually attach to a running container using:
+
+```
 $ docker attach 3747ada8f970
 / # %
+```
 
+Keep in mind that when you attach to a container, you are now interacting with its init process. Depending on the process, interrupting it (`C-C`) could kill the process and stop the container.
+
+When you exit the container, it once again becomes stopped. Stopped containers always appear in `docker ps -a` and are not automatically removed. You can remove it manually using `docker rm`:
+
+```
 $ docker ps -a
 CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS                     PORTS               NAMES
 3747ada8f970        alpine:3.2          "/bin/sh"           35 minutes ago      Exited (0) 3 seconds ago                       sick_einstein
@@ -262,15 +349,15 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 $ docker rm 3747ada8f970
 ```
 
-### Detached Containers
+## Detached Containers
 
-Because containers exit when the init process exits, the init process would need to be foregrounded:
+Because containers exit when the init process exits, the init process would need to be foregrounded. Take for example a forever process that loops and prints "Hello World!" once a second:
 
 ```
 $ docker run alpine:3.2 /bin/sh -c 'while true; do echo "Hello World!"; sleep 1; done'
 ```
 
-However, doing so keeps a terminal occupied. The answer would be to detach the container with `-d`:
+However, doing so keeps a terminal occupied. We've seen how to restart a container in detached mode, but when running a new container, the answer would be to explicitly detach the container with `-d`:
 
 ```
 $ docker run -d alpine:3.2 /bin/sh -c 'while true; do echo "Hello World!"; sleep 1; done'
@@ -298,17 +385,42 @@ root                1906                1530                0                   
 root                2009                1906                0                   05:10               ?                   00:00:00            sleep 1
 ```
 
-Stopping a container (`docker stop 032b0875083e`) sends a SIGTERM, while (`docker kill 032b0875083e`) sends a SIGKILL.
+Stopping a container (`docker stop ID`) sends a SIGTERM, while (`docker kill ID`) sends a SIGKILL. It's up to the init process on how it handles these signals; hopefully predictably.
 
-### Removing Containers
+## Removing Containers
+
+Docker doesn't provide one command to remove all containers, but this should get you going:
 
 `docker ps -a -q | xargs docker rm`
 
-### Sample Application
+**Notes:**
+
+1. This command will attempt to remove *all* containers, regardless of whether they're running or stopped. Thankfully, docker will prevent you from deleting running containers; you'll just get a lot of warning messages.
+2. The `-q` option will print out only the container ID column, without a column header. It's very useful for shell magickery, and many commands support this option.
+
+## Sample Application
+
+You can get the project from [https://github.com/ripta/dockerfell](https://github.com/ripta/dockerfell):
 
 ```
-$ cd ~/Projects/dockerfell/nginx-static-test
-$ docker build -t ripta/nginx-static-test:1.0 .
+$ cd ~/Projects
+$ git clone git@github.com:ripta/dockerfell.git
+```
+
+The repository contains several docker projects. The one you want is `nginx-static-test`:
+
+```
+$ cd dockerfell/nginx-static-test
+```
+
+You may wish to edit the `Dockerfile` to have your name and email address.
+
+Once ready, build the image, giving it the tag `$DOCKER_HUB_USER/nginx-static-test:1.0`, where `$DOCKER_HUB_USER` is your docker hub username if you have one.
+
+If you don't plan on pushing the image to docker hub later—and you don't have to—you can give it a local tag, e.g., `nginx-static-test:1.0`. 
+
+```
+$ docker build -t $DOCKER_HUB_USER/nginx-static-test:1.0 .
 Sending build context to Docker daemon 224.3 kB
 Sending build context to Docker daemon
 Step 0 : FROM alpine:3.2
@@ -351,36 +463,82 @@ Removing intermediate container 64f4670e03c4
 Successfully built e1df01d77395
 ```
 
-Try running nginx:
+You should have a new image, tagged with your tag, although the image ID will likely be different as you build at different times:
 
 ```
-$ docker run -d -p 80 ripta/nginx-static-test:1.0 nginx
-$ docker ps
+$ docker images
+REPOSITORY                TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
+ripta/nginx-static-test   1.0                 e1df01d77395        2 days ago          7.639 MB
 ```
 
-Something is wrong, because the container isn't executing. `docker ps -n 1` will show that the container exited. What went wrong?
+Now try running nginx:
 
 ```
-$ docker run -i -t ripta/nginx-static-test:1.0 /bin/sh
+$ docker run -d -p 80 $DOCKER_HUB_USER/nginx-static-test:1.0 nginx
+eedf6027be4bf66a20317265154ae857f4cae74ebab3d9ae151d61c20065d555
+```
+
+Even though you get a container ID, if you check `docker ps`, you'll notice that the container is not running.
+
+Something is wrong, because the container has exited. What went wrong?
+
+Let's spawn a shell against the image, and run nginx manually:
+
+```
+$ docker run -i -t $DOCKER_HUB_USER/nginx-static-test:1.0 /bin/sh
+/ # which nginx
+/usr/sbin/nginx
+```
+
+You'll notice that because the image already has nginx on it, we don't need to reinstall it.
+
+```
 / # nginx
 / #
 ```
 
-Looks like nginx got backgrounded. Uh-oh. More importantly, if you're familiar with how processes are daemonized, you'll know that applications will frequently [fork or double-fork](http://stackoverflow.com/a/16317668), with the intention that the child process is orphaned, then adopted by the init process.
+Looks like nginx got backgrounded. Uh-oh.
 
-If you recall, the process we start is actually the init process. When it exits, the container exits.
+More importantly, if you're familiar with how processes are daemonized, you'll know that applications will frequently [fork or double-fork](http://stackoverflow.com/a/16317668), with the intention that the child process is orphaned, then adopted by the init process.
 
-So, you'll note that nothing has been started, because nginx is automatically backgrounded. If you refer to the nginx docs, you'll note the `-g` flag:
+If you recall, the process we start is actually the init process. When the init process exits, *regardless of whether there are other processes running inside the container* or not, the container also exits, thus terminating all processes in the container.
+
+So, you'll note that nothing has been started, because nginx is automatically backgrounded. If you refer to the nginx docs, you'll note the [`-g` flag](http://wiki.nginx.org/CommandLine), which allows you to [disable daemonization](http://nginx.org/en/docs/ngx_core_module.html#daemon).
+
+Let's try that again:
 
 ```
 $ docker run -d -p 80 ripta/nginx-static-test:1.0 nginx -g 'daemon off;'
+e4359bc5905ee4432e38a109770efb44497aa6caf13c67d50ab90054ff781664
+
 $ docker ps
 ```
 
-You'll see docker's host port in the output of `docker ps` above. So how do we query it?
+You'll see docker's host port in the output of `docker ps` above. So how do we connect to it?
+
+Normally, you would most likely know the IP address of the docker host. In our case, however, `docker-machine` provides a simple way to query the IP address of the docker host:
 
 ```
 $ docker-machine ip intro
-$ curl -i http://172.16.241.128:32773/
-$ curl -i http://172.16.241.128:32773/VERSION
+172.16.241.128
 ```
+
+and if you have the container ID of the nginx container, you can retrieve the host's port that is mapped to the container port 80:
+
+```
+$ docker port e4359bc5905e 80/tcp
+0.0.0.0:32769
+```
+
+To connect to the web server, use curl or open the URL in a browser, subtituting for the IP and ports above:
+
+```
+$ curl -i http://172.16.241.128:32769/
+$ curl -i http://172.16.241.128:32769/VERSION
+```
+
+## Cleaning Up
+
+You can stop your docker host using `docker-machine stop intro`, which will also stop all containers running in it.
+
+Docker does not keep track of the state of the containers during shut down, and so it will *not* automatically restart containers when you start the docker host back up again using `docker-machine start intro`.
